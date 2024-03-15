@@ -505,7 +505,13 @@ int Hooks::dReadUsercmd(void *buf, CUserCmd *move, CUserCmd *from)
 	hkReadUsercmd.fOriginal(buf, move, from);
 
 	int i = m_Game->m_CurrentUsercmdID;
-	if (move->tick_count < 0) // Signal for VR CUserCmd
+	auto& vrPlayer = m_Game->m_PlayersVRInfo[i];
+
+	auto pos = buf->Tell();
+	int res = buf->ReadChar();
+
+	// This means we got a VR player on the other side
+	if (res == -2)
 	{
 		move->tick_count *= -1;
 
@@ -760,7 +766,7 @@ Vector* Hooks::dWeapon_ShootPosition(void* ecx, void* edx, Vector* eyePos)
 	int localIndex = m_Game->m_EngineClient->GetLocalPlayer();
 	int index = EntityIndex(ecx);
 
-	auto vrPlayer = m_Game->m_PlayersVRInfo[index];
+	auto& vrPlayer = m_Game->m_PlayersVRInfo[index];
 
 	if (m_VR->m_IsVREnabled && localIndex == index) {
 		*result = m_VR->GetRightControllerAbsPos();	
@@ -799,7 +805,7 @@ bool __fastcall Hooks::dTraceFirePortal(void* ecx, void* edx, const Vector& vTra
 		if (owner) {
 			int index = EntityIndex(owner);
 
-			auto vrPlayer = m_Game->m_PlayersVRInfo[index];
+			auto& vrPlayer = m_Game->m_PlayersVRInfo[index];
 
 			if (m_VR->m_IsVREnabled && localIndex == index) {
 				vNewTraceStart = m_VR->GetRightControllerAbsPos();
@@ -1028,7 +1034,7 @@ QAngle& __fastcall Hooks::dEyeAngles(void* ecx, void* edx) {
 		int localIndex = m_Game->m_EngineClient->GetLocalPlayer();
 		int index = EntityIndex(ecx);
 
-		auto vrPlayer = m_Game->m_PlayersVRInfo[index];
+		auto& vrPlayer = m_Game->m_PlayersVRInfo[index];
 
 		if (m_VR->m_IsVREnabled && localIndex == index) {
 			return m_VR->GetRightControllerAbsAngleConst();
