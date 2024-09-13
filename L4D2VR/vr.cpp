@@ -1321,11 +1321,6 @@ void VR::UpdateTracking()
     m_ViewmodelRight = VectorRotate(m_ViewmodelRight, m_ViewmodelForward, m_ViewmodelAngOffset.z);
     m_ViewmodelUp = VectorRotate(m_ViewmodelUp, m_ViewmodelForward, m_ViewmodelAngOffset.z);
 
-    // Log important positions and orientations for debugging
-    std::cout << "HMD Position Corrected: " << hmdPosCorrected << std::endl;
-    std::cout << "Right Controller Position Relative: " << m_RightControllerPosRel << std::endl;
-    std::cout << "Viewmodel Position Offset: " << m_ViewmodelPosOffset << std::endl;
-    std::cout << "Viewmodel Forward Vector: " << m_ViewmodelForward << std::endl;
 }
 
 Vector VR::GetViewAngle()
