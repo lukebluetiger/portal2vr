@@ -15,6 +15,16 @@
 #include <algorithm>
 #include <d3d9_vr.h>
 
+/**
+ * @brief Constructs the VR system and initializes the VR settings.
+ *
+ * This constructor handles the initialization of the VR system, including setting up the VR
+ * compositor, retrieving recommended render target sizes, calculating texture bounds, and
+ * installing necessary application manifests. It also sets up the overlay for the main menu and
+ * configures various VR settings.
+ *
+ * @param game Pointer to the Game instance.
+ */
 VR::VR(Game *game) 
 {
     m_Game = game;
@@ -103,6 +113,15 @@ VR::VR(Game *game)
     m_IsVREnabled = true;
 }
 
+/**
+ * @brief Sets the action manifest for the VR system.
+ *
+ * This method sets the path for the action manifest file, which defines the input actions for the VR
+ * system. It also retrieves handles for the various actions defined in the manifest.
+ *
+ * @param fileName Path to the action manifest file.
+ * @return int Returns 0 on success, otherwise an error code.
+ */
 int VR::SetActionManifest(const char *fileName) 
 {
     char currentDir[MAX_STR_LEN];
@@ -146,6 +165,15 @@ int VR::SetActionManifest(const char *fileName)
     return 0;
 }
 
+/**
+ * @brief Installs the application manifest for the VR system.
+ *
+ * This method installs the application manifest file, which contains information about the VR application's
+ * setup, including its actions and configurations. The manifest file is added to the VR runtime so that the
+ * application can access and use it.
+ *
+ * @param fileName Path to the application manifest file.
+ */
 void VR::InstallApplicationManifest(const char *fileName)
 {
     char currentDir[MAX_STR_LEN];
@@ -156,6 +184,15 @@ void VR::InstallApplicationManifest(const char *fileName)
     vr::VRApplications()->AddApplicationManifest(path);
 }
 
+/**
+ * @brief Overrides the screen size for VR rendering.
+ *
+ * This function toggles the screen size override for VR rendering. When enabled, it forces the screen
+ * size to match the VR render target dimensions. This ensures the rendering context correctly adapts
+ * the viewport size to the VR rendering resolution.
+ *
+ * @param bState Boolean flag to enable or disable the screen size override.
+ */
 void VR::SetScreenSizeOverride(bool bState) {
     bool isOverriding = m_Game->m_VguiSurface->IsScreenSizeOverrideActive();
 
@@ -178,6 +215,14 @@ void VR::SetScreenSizeOverride(bool bState) {
     }
 }
 
+/**
+ * @brief Updates the VR system state and submits the rendered textures.
+ *
+ * This function checks if the VR system is initialized and updates the VR system state by submitting
+ * the rendered textures to the VR compositor. It also handles menu input processing when the cursor
+ * is visible. If the application is not in-game, it ensures that the render target is released to
+ * prevent crashes.
+ */
 void VR::Update()
 {
     if (!m_IsInitialized || !m_Game->m_Initialized)
@@ -214,6 +259,13 @@ void VR::Update()
     }
 }
 
+/**
+ * @brief Creates the render target textures for VR rendering.
+ *
+ * This function initializes and allocates the necessary render target textures for VR rendering,
+ * including textures for the left eye, right eye, HUD, and blank texture. The texture dimensions
+ * are based on the recommended render target size provided by the VR system.
+ */
 void VR::CreateVRTextures()
 {
     int windowWidth, windowHeight;
@@ -247,6 +299,16 @@ void VR::CreateVRTextures()
     m_CreatedVRTextures = true;
 }
 
+/**
+ * @brief Submits the rendered textures to the VR compositor.
+ *
+ * This function checks if a new frame has been rendered and submits the appropriate textures for
+ * the left and right eyes to the VR compositor. It also handles the submission of overlay textures
+ * for the main menu when in-game, ensuring proper aspect ratio and bounds. If no new frame is
+ * rendered, it falls back to using blank textures.
+ *
+ * If the cursor is visible (indicating a pause menu), it also processes input for the pause menu.
+ */
 void VR::SubmitVRTextures()
 {
     if (!m_RenderedNewFrame)
@@ -303,6 +365,15 @@ void VR::SubmitVRTextures()
     m_RenderedNewFrame = false;
 }
 
+/**
+ * @brief Retrieves pose data from a VR tracked device pose.
+ *
+ * This function extracts position, velocity, angular position, and angular velocity data from the
+ * provided tracked device pose and populates the specified output pose structure with this information.
+ *
+ * @param poseRaw The raw tracked device pose from which to extract data.
+ * @param poseOut The structure to be populated with the extracted pose data.
+ */
 void VR::GetPoseData(vr::TrackedDevicePose_t &poseRaw, TrackedDevicePoseData &poseOut)
 {
     if (poseRaw.bPoseIsValid) 
@@ -332,6 +403,15 @@ void VR::GetPoseData(vr::TrackedDevicePose_t &poseRaw, TrackedDevicePoseData &po
     }
 }
 
+/**
+ * @brief Repositions VR overlays (e.g., main menu and HUD) based on the HMD's position and orientation.
+ *
+ * This function updates the position and orientation of VR overlays, adjusting their transformation
+ * matrices to be relative to the current HMD position and orientation. It calculates new positions for
+ * the overlays to ensure they appear correctly within the user's view.
+ *
+ * TODO: Implement similar logic for the HUD overlay, which is currently commented out.
+ */
 void VR::RepositionOverlays()
 {
     vr::TrackedDevicePose_t hmdPose = m_Poses[vr::k_unTrackedDeviceIndex_Hmd];
@@ -405,6 +485,15 @@ void VR::RepositionOverlays()
     vr::VROverlay()->SetOverlayWidthInMeters(m_HUDHandle, m_HudSize);*/
 }
 
+/**
+ * @brief Updates the pose data for the HMD and controllers.
+ * 
+ * This function retrieves the current poses of the HMD and controllers (both left and right) and 
+ * updates their corresponding pose data structures. The function swaps the controller indices if 
+ * the user is left-handed.
+ * 
+ * TODO: Consider more efficient handling if more tracked devices are added in the future.
+ */
 void VR::GetPoses() 
 {
     vr::TrackedDevicePose_t hmdPose = m_Poses[vr::k_unTrackedDeviceIndex_Hmd];
@@ -423,12 +512,30 @@ void VR::GetPoses()
     GetPoseData(rightControllerPose, m_RightControllerPose);
 }
 
+/**
+ * @brief Updates the poses and actions for the VR system.
+ *
+ * This function synchronizes the pose and action states with the VR system. It retrieves the
+ * current device poses using the VR compositor and updates the action states using the VR input
+ * interface. This ensures the application has up-to-date information about the tracked devices
+ * and their actions.
+ *
+ * TODO: Handle additional tracked devices beyond the max count, if needed.
+ */
 void VR::UpdatePosesAndActions() 
 {
     vr::VRCompositor()->WaitGetPoses(m_Poses, vr::k_unMaxTrackedDeviceCount, NULL, 0);
     m_Input->UpdateActionState(&m_ActiveActionSet, sizeof(vr::VRActiveActionSet_t), 1);
 }
 
+/**
+ * @brief Retrieves the view parameters for the left and right eyes.
+ *
+ * This function retrieves the transformation matrices for the left and right eyes from the VR
+ * system. It then extracts and stores the positional offsets for the left and right eye transforms.
+ *
+ * TODO: Handle transformation matrices for customized eye views.
+ */
 void VR::GetViewParameters() 
 {
     vr::HmdMatrix34_t eyeToHeadLeft = m_System->GetEyeToHeadTransform(vr::Eye_Left);
@@ -442,6 +549,16 @@ void VR::GetViewParameters()
     m_EyeToHeadTransformPosRight.z = eyeToHeadRight.m[2][3];
 }
 
+/**
+ * @brief Checks if a digital action is pressed.
+ *
+ * This function checks the state of a specified digital action and optionally whether the action
+ * has changed state. Digital actions are simple on/off inputs without any analog component.
+ *
+ * @param actionHandle The handle of the digital action to check.
+ * @param checkIfActionChanged Boolean flag to check if the action state has changed.
+ * @return bool True if the action is pressed (and optionally state-changed), otherwise false.
+ */
 bool VR::PressedDigitalAction(vr::VRActionHandle_t &actionHandle, bool checkIfActionChanged)
 {
     vr::InputDigitalActionData_t digitalActionData;
@@ -458,6 +575,16 @@ bool VR::PressedDigitalAction(vr::VRActionHandle_t &actionHandle, bool checkIfAc
     return false;
 }
 
+/**
+ * @brief Gets the analog action data.
+ *
+ * This function retrieves the current state of a specified analog action, which includes
+ * float-type axis information such as joystick positions.
+ *
+ * @param actionHandle The handle of the analog action to retrieve data for.
+ * @param analogDataOut The structure to be populated with the analog action data.
+ * @return bool True if the action data was successfully retrieved, otherwise false.
+ */
 bool VR::GetAnalogActionData(vr::VRActionHandle_t &actionHandle, vr::InputAnalogActionData_t &analogDataOut)
 {
     vr::EVRInputError result = m_Input->GetAnalogActionData(actionHandle, &analogDataOut, sizeof(analogDataOut), vr::k_ulInvalidInputValueHandle);
@@ -468,6 +595,17 @@ bool VR::GetAnalogActionData(vr::VRActionHandle_t &actionHandle, vr::InputAnalog
     return false;
 }
 
+/**
+ * @brief Processes input for the VR menu.
+ *
+ * This function handles interaction with the main menu and potentially other overlays, processing
+ * both digital and analog input actions. It ensures that controller inputs are appropriately
+ * translated to menu interactions, such as moving the cursor or simulating keypresses.
+ *
+ * TODO: Implement input processing for other overlays if necessary (e.g., HUDHandle).
+ *
+ * @note Ensure to test the interaction flow for both in-game and main menu contexts to handle edge cases.
+ */
 void VR::ProcessMenuInput()
 {
     //vr::VROverlayHandle_t currentOverlay = m_Game->m_EngineClient->IsInGame() ? m_HUDHandle : m_MainMenuHandle;
@@ -602,12 +740,25 @@ void VR::ProcessMenuInput()
     }
 }
 
+
+/**
+ * @brief Processes VR input and maps it to in-game commands.
+ *
+ * This function checks analog and digital actions from the VR controllers and issues corresponding
+ * game commands, such as turning, attacking, jumping, and using items. It also handles snap turning,
+ * smooth turning, and resetting the VR position.
+ *
+ * TODO: Ensure that the controller's actions are correctly recognized and mapped.
+ * TODO: Verify smooth and snap turning for both controllers.
+ * TODO: Re-enable and test HUD overlay interaction if necessary.
+ * TODO: Ensure game UI/display such as crosshair and menus render correctly in VR.
+ */
 void VR::ProcessInput()
 {
     if (!m_IsVREnabled)
         return;
 
-    //vr::VROverlay()->SetOverlayFlag(m_HUDHandle, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false);
+    //vr::VROverlay()->SetOverlayFlag(m_HUDHandle, vr::VROverlayFlags_MakeOverlaysInteractiveIfVisible, false); // TODO: Re-enable and validate interactive overlays if needed
 
     typedef std::chrono::duration<float, std::milli> duration;
     auto currentTime = std::chrono::steady_clock::now();
@@ -617,10 +768,12 @@ void VR::ProcessInput()
 
     vr::InputAnalogActionData_t analogActionData;
 
+    // Handle turning
     if (GetAnalogActionData(m_ActionTurn, analogActionData))
     {
         if (m_SnapTurning)
         {
+            // Handle snap turning
             if (!m_PressedTurn && analogActionData.x > 0.5)
             {
                 m_RotationOffset.y -= m_SnapTurnAngle;
@@ -634,11 +787,10 @@ void VR::ProcessInput()
             else if (analogActionData.x < 0.3 && analogActionData.x > -0.3)
                 m_PressedTurn = false;
         }
-        // Smooth turning
         else
         {
+            // Handle smooth turning
             float deadzone = 0.2;
-            // smoother turning
             float xNormalized = (abs(analogActionData.x) - deadzone) / (1 - deadzone);
             if (analogActionData.x > deadzone)
             {
@@ -654,6 +806,7 @@ void VR::ProcessInput()
         m_RotationOffset.y -= 360 * std::floor(m_RotationOffset.y / 360);
     }
 
+    // Handle other actions
     if (PressedDigitalAction(m_ActionPrimaryAttack))
     {
         m_Game->ClientCmd_Unrestricted("+attack");
@@ -731,8 +884,9 @@ void VR::ProcessInput()
     {
         m_Game->ClientCmd_Unrestricted("impulse 201");
     }
-    
-    /*bool isControllerVertical = m_RightControllerAngAbs.x > 60 || m_RightControllerAngAbs.x < -45;
+
+    /*
+    bool isControllerVertical = m_RightControllerAngAbs.x > 60 || m_RightControllerAngAbs.x < -45;
     if ((PressedDigitalAction(m_ShowHUD) || PressedDigitalAction(m_Scoreboard) || isControllerVertical || m_HudAlwaysVisible)
         && m_RenderedHud)
     {
@@ -749,7 +903,8 @@ void VR::ProcessInput()
     else
     {
         vr::VROverlay()->HideOverlay(m_HUDHandle);
-    }*/
+    }
+    */
 
     m_RenderedHud = false;
 
@@ -760,6 +915,17 @@ void VR::ProcessInput()
     }
 }
 
+/**
+ * @brief Converts an HMD matrix to a VMatrix.
+ *
+ * This function converts a 3x4 HMD matrix (typically used by VR APIs) to a VMatrix, which is used by the Source engine.
+ * Note: The function does not adjust for different coordinate systems between HmdMatrix34_t and VMatrix.
+ *
+ * @param hmdMat The input 3x4 matrix from the HMD.
+ * @return The converted VMatrix.
+ *
+ * TODO: Verify if coordinate system adjustments are needed.
+ */
 VMatrix VR::VMatrixFromHmdMatrix(const vr::HmdMatrix34_t &hmdMat)
 {
     // VMatrix has a different implicit coordinate system than HmdMatrix34_t, but this function does not convert between them
@@ -773,6 +939,16 @@ VMatrix VR::VMatrixFromHmdMatrix(const vr::HmdMatrix34_t &hmdMat)
     return vMat;
 }
 
+/**
+ * @brief Converts a VMatrix to an HMD matrix.
+ *
+ * This function converts a VMatrix, which is used by the Source engine, to a 3x4 matrix used by VR APIs.
+ *
+ * @param vMat The input VMatrix.
+ * @return The converted 3x4 HMD matrix.
+ *
+ * TODO: Confirm accurate conversion, especially considering the difference in coordinate systems.
+ */
 vr::HmdMatrix34_t VR::VMatrixToHmdMatrix(const VMatrix &vMat)
 {
     vr::HmdMatrix34_t hmdMat = {0};
@@ -796,6 +972,19 @@ vr::HmdMatrix34_t VR::VMatrixToHmdMatrix(const VMatrix &vMat)
     return hmdMat;
 }
 
+/**
+ * @brief Retrieves the local tracking matrix for the controller tip component.
+ *
+ * This function attempts to get the transformation matrix for the tip component of the specified controller
+ * (left or right hand). If the controller is of the correct type and the lookup succeeds, it returns the matrix.
+ * Otherwise, it returns the identity matrix.
+ *
+ * @param controllerRole The role of the controller (left or right hand).
+ * @return The transformation matrix for the controller tip or identity matrix if lookup fails.
+ *
+ * TODO: Handle cases where both controllers are not hand controllers gracefully.
+ * TODO: Optimize the string retrieval and matrix calculation if needed.
+ */
 vr::HmdMatrix34_t VR::GetControllerTipMatrix(vr::ETrackedControllerRole controllerRole)
 {
     vr::VRInputValueHandle_t inputValue = vr::k_ulInvalidInputValueHandle;
@@ -836,6 +1025,19 @@ vr::HmdMatrix34_t VR::GetControllerTipMatrix(vr::ETrackedControllerRole controll
     return identity;
 }
 
+/**
+ * @brief Checks for an intersection between the overlay and the specified controller.
+ *
+ * This function computes whether the laser pointer originating from the controller intersects with a given overlay.
+ * It involves transforming coordinates from the controller's tip to the absolute tracking space and computing the intersection.
+ *
+ * @param overlayHandle The handle of the overlay to check for intersection.
+ * @param controllerRole The role of the controller (left or right hand).
+ * @return True if the intersection is detected, false otherwise.
+ *
+ * TODO: Confirm the precision and accuracy of the intersection parameters.
+ * TODO: Possibly refactor to handle more controller types and improve readability.
+ */
 bool VR::CheckOverlayIntersectionForController(vr::VROverlayHandle_t overlayHandle, vr::ETrackedControllerRole controllerRole)
 {
     vr::TrackedDeviceIndex_t deviceIndex = m_System->GetTrackedDeviceIndexForControllerRole(controllerRole);
@@ -872,6 +1074,19 @@ QAngle& VR::GetRightControllerAbsAngleConst()
     return m_RightControllerAngAbs;
 }
 
+/**
+ * @brief Retrieves the absolute position of the right controller.
+ *
+ * This function calculates the absolute position of the right controller in the game world.
+ * If the eye position is not provided, it uses the setup origin. It also considers
+ * 6 Degrees of Freedom (6DOF) if enabled.
+ *
+ * @param eyePosition The position of the player's eye.
+ * @return The absolute position of the right controller.
+ *
+ * TODO: Handle player entity retrieval and eye position more reliably.
+ * TODO: Ensure the correct calculation of positions related to 6DOF and HMD-relative positions.
+ */
 Vector VR::GetRightControllerAbsPos(Vector eyePosition)
 {
     Vector offset = eyePosition;
@@ -895,6 +1110,17 @@ Vector VR::GetRightControllerAbsPos(Vector eyePosition)
     return position;
 }
 
+/**
+ * @brief Calculates the recommended absolute position for the viewmodel.
+ *
+ * This function returns the recommended absolute position for the viewmodel based on the
+ * right controller's absolute position and various offsets.
+ *
+ * @param eyePosition The position of the player's eye.
+ * @return The recommended absolute position for the viewmodel.
+ *
+ * TODO: Validate the offsets to ensure the viewmodel position is consistent with user expectations.
+ */
 Vector VR::GetRecommendedViewmodelAbsPos(Vector eyePosition)
 {
     Vector viewmodelPos = GetRightControllerAbsPos(eyePosition);
@@ -905,6 +1131,16 @@ Vector VR::GetRecommendedViewmodelAbsPos(Vector eyePosition)
     return viewmodelPos;
 }
 
+/**
+ * @brief Calculates the recommended absolute angle for the viewmodel.
+ *
+ * This function converts the viewmodel's forward and up vectors into angles and returns
+ * the recommended absolute angle for the viewmodel.
+ *
+ * @return The recommended absolute angle for the viewmodel.
+ *
+ * TODO: Ensure the correct transformation from vectors to angles.
+ */
 QAngle VR::GetRecommendedViewmodelAbsAngle()
 {
     QAngle result{};
@@ -914,6 +1150,14 @@ QAngle VR::GetRecommendedViewmodelAbsAngle()
     return result;
 }
 
+/**
+ * @brief Updates the HMD angles based on the current rotation offset.
+ *
+ * This function adjusts the local angles of the HMD by adding the current rotation
+ * offset and recalculating the forward, right, and up vectors for the HMD's orientation.
+ *
+ * TODO: Ensure accurate HMD orientation calculations especially after normalization.
+ */
 void VR::UpdateHMDAngles() {
     QAngle hmdAngLocal = m_HmdPose.TrackedDeviceAng;
 
@@ -937,29 +1181,33 @@ void VR::ResetPosition()
     m_Center = m_HmdPose.TrackedDevicePos;
 }
 
+/**
+ * @brief Updates the tracking information for the VR head-mounted display (HMD) and controllers.
+ *
+ * This function retrieves the latest pose data for the HMD and controllers, updates their positions
+ * and orientations, and applies necessary transformations and offsets for accurate rendering and interaction.
+ *
+ * TODO: Verify all coordinate transformations and correct any inconsistencies, especially in roomscale setups.
+ * TODO: Ensure crosshair and laser beam positioning are accurate.
+ */
 void VR::UpdateTracking()
 {
+    // Retrieve the current tracking poses for the HMD and controllers
     GetPoses();
 
+    // Retrieve the local player entity
     int playerIndex = m_Game->m_EngineClient->GetLocalPlayer();
     C_BasePlayer* localPlayer = (C_BasePlayer*)m_Game->GetClientEntity(playerIndex);
-    if (!localPlayer)
+    if (!localPlayer) {
+        std::cerr << "Error: Local player entity not found." << std::endl;
         return;
+    }
 
     // HMD tracking
     Vector hmdPosLocal = m_HmdPose.TrackedDevicePos;
     Vector hmdPosCentered = hmdPosLocal - m_Center;
 
     m_HmdPosRelativeRaw = hmdPosCentered;
-
-    //std::cout << "HMD - X: " << hmdWorldPos.x << ", Y: " << hmdWorldPos.y << ", Z: " << hmdWorldPos.z << "\n";
-
-    Vector hmdPosCorrected = hmdPosCentered;
-    VectorPivotXY(hmdPosCorrected, { 0, 0, 0 }, m_RotationOffset.y);
-    
-    UpdateHMDAngles();
-
-    m_HmdPosRelative = hmdPosCorrected * m_VRScale;
 
     // Roomscale setup
     /*Vector cameraMovingDirection = m_Center - m_SetupOriginPrev;
@@ -976,13 +1224,23 @@ void VR::UpdateTracking()
     if ((cameraFollowing < 0 && cameraDistance > 1) || (m_PushingThumbstick))
         m_RoomscaleActive = false;*/
 
+    // Apply rotation offset to HMD position
+    Vector hmdPosCorrected = hmdPosCentered;
+    VectorPivotXY(hmdPosCorrected, { 0, 0, 0 }, m_RotationOffset.y);
+
+    UpdateHMDAngles();
+
+    // Scale HMD position for VR space
+    m_HmdPosRelative = hmdPosCorrected * m_VRScale;
+
+    // Calculate aiming position
     m_AimPos = Trace((uint32_t*)localPlayer);
 
+    // Update crosshair and laser beam for Portal 2
     if (m_AimMode == 2) {
         C_Portal_Player* portalPlayer = (C_Portal_Player*)localPlayer;
 
         auto activeWeaponAddr = (*(int(__thiscall**)(void*))(*(uintptr_t*)portalPlayer + 968))(portalPlayer);
-        //auto activeWeaponAddr = (*(int(__thiscall**)(void*))(*(uintptr_t*)m_Game->m_Offsets->GetActivePortalWeapon.address))(portalPlayer);
 
         if (activeWeaponAddr && m_DrawCrosshair) {
             CWeaponPortalBase* activeWeapon = (CWeaponPortalBase*)activeWeaponAddr;
@@ -992,11 +1250,11 @@ void VR::UpdateTracking()
                 portalPlayer->m_PointLaser->SetControlPoint(2, m_Game->m_singlePlayerPortalColors[activeWeapon->m_iLastFiredPortal] * 0.5f);
             }
             else {
-                std::cout << "Creating Point Laser Beam Sight Thingy" << "\n";
+                std::cout << "Creating Point Laser Beam Sight" << std::endl;
                 m_Game->m_Hooks->CreatePingPointer(localPlayer, m_AimPos);
             }
         }
-        else if (portalPlayer->m_PointLaser){
+        else if (portalPlayer->m_PointLaser) {
             portalPlayer->m_PointLaser->StopEmission(false, true, false);
             portalPlayer->m_PointLaser = NULL;
         }
@@ -1028,6 +1286,7 @@ void VR::UpdateTracking()
     m_HmdPosAbsPrev = m_HmdPosAbs;
     m_SetupOriginPrev = m_SetupOrigin;*/
 
+    // Retrieve view parameters for IPD and eye positions
     GetViewParameters();
     m_Ipd = m_EyeToHeadTransformPosRight.x * 2;
     m_EyeZ = m_EyeToHeadTransformPosRight.z;
@@ -1039,44 +1298,36 @@ void VR::UpdateTracking()
     Vector rightControllerPosLocal = m_RightControllerPose.TrackedDevicePos;
     QAngle rightControllerAngLocal = m_RightControllerPose.TrackedDeviceAng;
 
-    //std::cout << "Right Controller - X: " << rightControllerPosLocal.x << "Y: " << rightControllerPosLocal.y << "Z: " << rightControllerPosLocal.z << "\n";
-
+    // Calculate right controller's relative position and orientation
     Vector hmdToController = rightControllerPosLocal - hmdPosLocal;
-    //Vector rightControllerPosCorrected = hmdPosCorrected + hmdToController;
 
-    // When using stick turning, pivot the controllers around the HMD
+    // Apply rotation offset to controller positions
     VectorPivotXY(hmdToController, { 0, 0, 0 }, m_RotationOffset.y);
-
     m_RightControllerPosRel = hmdToController * m_VRScale;
 
-    //rightControllerAngLocal += m_RotationOffset;
     rightControllerAngLocal.x += m_RotationOffset.x;
     rightControllerAngLocal.y += m_RotationOffset.y;
     rightControllerAngLocal.z += m_RotationOffset.z;
 
-    // Wrap angle from -180 to 180
-    //rightControllerAngLocal.Normalize();
-
+    // Update controller orientation vectors
     QAngle::AngleVectors(leftControllerAngLocal, &m_LeftControllerForward, &m_LeftControllerRight, &m_LeftControllerUp);
     QAngle::AngleVectors(rightControllerAngLocal, &m_RightControllerForward, &m_RightControllerRight, &m_RightControllerUp);
 
+    // Apply downward angle offset to simulate natural controller orientation
     const float offset = -30;
-
-    // Adjust controller angle downward
     m_LeftControllerForward = VectorRotate(m_LeftControllerForward, m_LeftControllerRight, offset);
     m_LeftControllerUp = VectorRotate(m_LeftControllerUp, m_LeftControllerRight, offset);
 
     m_RightControllerForward = VectorRotate(m_RightControllerForward, m_RightControllerRight, offset);
     m_RightControllerUp = VectorRotate(m_RightControllerUp, m_RightControllerRight, offset);
 
-    // controller angles
+    // Calculate final absolute angle for controllers
     QAngle::VectorAngles(m_LeftControllerForward, m_LeftControllerUp, m_LeftControllerAngAbs);
     QAngle::VectorAngles(m_RightControllerForward, m_RightControllerUp, m_RightControllerAngAbs);
     m_RightControllerAngAbs.Normalize();
 
-    PositionAngle viewmodelOffset = PositionAngle{ {4.5, -1, 1.5}, {0,0,0} };
-
-    // Apply both hardcoded and custom (from config) viewmodel offsets here:
+    // Configure viewmodel position and orientation
+    PositionAngle viewmodelOffset = PositionAngle{ {4.5, -1, 1.5}, {0, 0, 0} };
     m_ViewmodelPosOffset = viewmodelOffset.position + m_ViewmodelPosCustomOffset;
     m_ViewmodelAngOffset = viewmodelOffset.angle + m_ViewmodelAngCustomOffset;
 
@@ -1084,17 +1335,21 @@ void VR::UpdateTracking()
     m_ViewmodelUp = m_RightControllerUp;
     m_ViewmodelRight = m_RightControllerRight;
 
-    // Viewmodel yaw offset
+    // Apply viewmodel yaw, pitch, and roll offsets
     m_ViewmodelForward = VectorRotate(m_ViewmodelForward, m_ViewmodelUp, m_ViewmodelAngOffset.y);
     m_ViewmodelRight = VectorRotate(m_ViewmodelRight, m_ViewmodelUp, m_ViewmodelAngOffset.y);
 
-    // Viewmodel pitch offset
     m_ViewmodelForward = VectorRotate(m_ViewmodelForward, m_ViewmodelRight, m_ViewmodelAngOffset.x);
     m_ViewmodelUp = VectorRotate(m_ViewmodelUp, m_ViewmodelRight, m_ViewmodelAngOffset.x);
 
-    // Viewmodel roll offset
     m_ViewmodelRight = VectorRotate(m_ViewmodelRight, m_ViewmodelForward, m_ViewmodelAngOffset.z);
     m_ViewmodelUp = VectorRotate(m_ViewmodelUp, m_ViewmodelForward, m_ViewmodelAngOffset.z);
+
+    // Log important positions and orientations for debugging
+    std::cout << "HMD Position Corrected: " << hmdPosCorrected << std::endl;
+    std::cout << "Right Controller Position Relative: " << m_RightControllerPosRel << std::endl;
+    std::cout << "Viewmodel Position Offset: " << m_ViewmodelPosOffset << std::endl;
+    std::cout << "Viewmodel Forward Vector: " << m_ViewmodelForward << std::endl;
 }
 
 Vector VR::GetViewAngle()
