@@ -161,7 +161,6 @@ int VR::SetActionManifest(const char *fileName)
     m_Input->GetActionHandle("/actions/main/in/Scoreboard", &m_Scoreboard);
     m_Input->GetActionHandle("/actions/main/in/ShowHUD", &m_ShowHUD);
     m_Input->GetActionHandle("/actions/main/in/Pause", &m_Pause);
-    m_Input->GetActionHandle("/actions/main/in/ThirdAttack", &m_ThirdAttack);
 
     m_Input->GetActionSetHandle("/actions/main", &m_ActionSet);
     m_ActiveActionSet = {};
@@ -561,6 +560,16 @@ void VR::GetViewParameters()
     m_EyeToHeadTransformPosRight.z = eyeToHeadRight.m[2][3];
 }
 
+/**
+ * @brief Checks if a digital action is pressed.
+ *
+ * This function checks the state of a specified digital action and optionally whether the action
+ * has changed state. Digital actions are simple on/off inputs without any analog component.
+ *
+ * @param actionHandle The handle of the digital action to check.
+ * @param checkIfActionChanged Boolean flag to check if the action state has changed.
+ * @return bool True if the action is pressed (and optionally state-changed), otherwise false.
+ */
 bool VR::CheckDigitalActionChanged(vr::VRActionHandle_t &actionHandle, bool &state)
 {
     vr::InputDigitalActionData_t digitalActionData;
@@ -847,11 +856,6 @@ void VR::ProcessInput()
     if (CheckDigitalActionChanged(m_ActionSecondaryAttack, state))
     {
         m_Game->ClientCmd_Unrestricted(state ? "+attack2" : "-attack2");
-    }
-
-    if (CheckDigitalActionChanged(m_ThirdAttack, state) && state)
-    {
-        m_Game->ClientCmd_Unrestricted("ent_fire @att3 trigger");
     }
 
     if (CheckDigitalActionChanged(m_ActionJump, state))
